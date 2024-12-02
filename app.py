@@ -1,3 +1,8 @@
+try:
+    import cv2
+except ImportError as e:
+    st.error(f"OpenCV import failed: {e}")
+    raise
 import streamlit as st
 import numpy as np
 import cv2
@@ -68,6 +73,7 @@ def calculate_angle(a, b, c):
     if angle > 180.0:
         angle = 360 - angle
     return angle
+
 
 engine = pyttsx3.init()
 
