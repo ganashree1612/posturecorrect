@@ -1,8 +1,3 @@
-try:
-    import cv2
-except ImportError as e:
-    st.error(f"OpenCV import failed: {e}")
-    raise
 import streamlit as st
 import numpy as np
 import cv2
@@ -318,74 +313,6 @@ def personalized_exercise_plan():
                 st.markdown("- **Dumbbell Rows**: 3 sets of 12 reps")
 
 
-# def posture_correction():
-#     st.title("Posture Correction")
-#     st.write("This module detects your posture and provides corrective feedback.")
-#     st.write("*Ensure you are visible in front of the camera.*")
-
-#     if "run" not in st.session_state:
-#         st.session_state["run"] = False
-
-#     col1, col2, col3 = st.columns([1, 2, 1])
-#     with col2:
-#         if st.button("Start Posture Detection"):
-#             st.session_state["run"] = True
-#     with col3:
-#         if st.button("Stop Posture Detection"):
-#             st.session_state["run"] = False
-
-#     stframe = st.empty()
-#     analysis_frame = st.empty()  # Placeholder for posture feedback
-
-#     cap = cv2.VideoCapture(0)
-
-#     with mp_pose.Pose(
-#         min_detection_confidence=0.5, min_tracking_confidence=0.5
-#     ) as pose:
-#         while cap.isOpened():
-#             if not st.session_state["run"]:
-#                 break
-
-#             ret, frame = cap.read()
-#             if not ret:
-#                 st.write("Failed to capture video")
-#                 break
-
-#             image = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-#             result = pose.process(image)
-#             image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
-
-#             try:
-#                 landmarks = result.pose_landmarks.landmark
-
-#                 left_shoulder = [
-#                     landmarks[mp_pose.PoseLandmark.LEFT_SHOULDER.value].x,
-#                     landmarks[mp_pose.PoseLandmark.LEFT_SHOULDER.value].y,
-#                 ]
-#                 right_shoulder = [
-#                     landmarks[mp_pose.PoseLandmark.RIGHT_SHOULDER.value].x,
-#                     landmarks[mp_pose.PoseLandmark.RIGHT_SHOULDER.value].y,
-#                 ]
-
-#                 shoulder_difference = abs(left_shoulder[1] - right_shoulder[1])
-
-#                 if shoulder_difference > 0.05:
-#                     analysis_frame.warning(
-#                         "⚠ Your shoulders are not level. Try to adjust your posture."
-#                     )
-#                 else:
-#                     analysis_frame.success("✅ Good posture! Keep it up.")
-
-#             except:
-#                 pass
-
-#             mp_drawing.draw_landmarks(
-#                 image, result.pose_landmarks, mp_pose.POSE_CONNECTIONS
-#             )
-#             stframe.image(image, channels="BGR")
-
-
-#     cap.release()
 def posture_correction():
     st.title("Posture Correction")
     st.write("This module detects your posture and provides corrective feedback.")
@@ -498,57 +425,6 @@ def posture_correction():
     cap.release()
 
 
-# engine = pyttsx3.init()
-
-# # Initialize Mediapipe Pose
-# mp_pose = mp.solutions.pose
-
-
-# Function to provide audio feedback
-# def provide_audio_feedback(posture_status):
-#     engine.say(posture_status)
-#     engine.runAndWait()
-
-
-# Function to check sitting posture
-# def check_sitting_posture(landmarks):
-#     left_shoulder = np.array(
-#         [
-#             landmarks[mp_pose.PoseLandmark.LEFT_SHOULDER.value].x,
-#             landmarks[mp_pose.PoseLandmark.LEFT_SHOULDER.value].y,
-#         ]
-#     )
-#     right_shoulder = np.array(
-#         [
-#             landmarks[mp_pose.PoseLandmark.RIGHT_SHOULDER.value].x,
-#             landmarks[mp_pose.PoseLandmark.RIGHT_SHOULDER.value].y,
-#         ]
-#     )
-#     left_hip = np.array(
-#         [
-#             landmarks[mp_pose.PoseLandmark.LEFT_HIP.value].x,
-#             landmarks[mp_pose.PoseLandmark.LEFT_HIP.value].y,
-#         ]
-#     )
-#     right_hip = np.array(
-#         [
-#             landmarks[mp_pose.PoseLandmark.RIGHT_HIP.value].x,
-#             landmarks[mp_pose.PoseLandmark.RIGHT_HIP.value].y,
-#         ]
-#     )
-
-#     # Calculate distances
-#     shoulder_distance = np.linalg.norm(left_shoulder - right_shoulder)
-#     hip_distance = np.linalg.norm(left_hip - right_hip)
-
-#     # Thresholds for sitting posture
-#     if shoulder_distance < 0.2 and hip_distance < 0.2:
-#         return "Correct Sitting Posture"
-#     else:
-#         return "Incorrect Sitting Posture"
-
-
-# Function to check standing posture
 def check_standing_posture(landmarks):
     left_shoulder = np.array(
         [
