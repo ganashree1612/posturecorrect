@@ -306,7 +306,7 @@ def posture_correction():
     stframe = st.empty()
     analysis_frame = st.empty()  # Placeholder for posture feedback
 
-    cap = cv2.VideoCapture(0)
+    cap = cv2.VideoCapture(1)
 
     with mp_pose.Pose(
         min_detection_confidence=0.5, min_tracking_confidence=0.5
