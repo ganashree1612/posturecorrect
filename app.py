@@ -3,7 +3,6 @@ import numpy as np
 import cv2
 import mediapipe as mp
 from streamlit_option_menu import option_menu
-import pyttsx3
 import threading
 
 mp_pose = mp.solutions.pose
@@ -68,28 +67,28 @@ def calculate_angle(a, b, c):
     return angle
 
 
-engine = pyttsx3.init()
+# engine = pyttsx3.init()
 
 
-def play_audio_feedback(count, side):
-    def run_feedback():
-        # Generate the speech output for repetition count
-        message = f"Repetition count for {side} side: {count} repetitions."
-        engine.say(message)
-        engine.runAndWait()
+# def play_audio_feedback(count, side):
+#     def run_feedback():
+#         # Generate the speech output for repetition count
+#         message = f"Repetition count for {side} side: {count} repetitions."
+#         # engine.say(message)
+#         # engine.runAndWait()
+
+#     # Run the audio feedback in a separate thread to avoid blocking
+#     # threading.Thread(target=run_feedback).start()
+
+
+# def provide_audio_feedback(posture_status):
+#     def run_feedback():
+#         # Generate the speech output for posture status
+        # engine.say(posture_status)
+        # engine.runAndWait()
 
     # Run the audio feedback in a separate thread to avoid blocking
-    threading.Thread(target=run_feedback).start()
-
-
-def provide_audio_feedback(posture_status):
-    def run_feedback():
-        # Generate the speech output for posture status
-        engine.say(posture_status)
-        engine.runAndWait()
-
-    # Run the audio feedback in a separate thread to avoid blocking
-    threading.Thread(target=run_feedback).start()
+    # threading.Thread(target=run_feedback).start()
 
 
 def physiotherapy_exercises():
@@ -239,7 +238,7 @@ def physiotherapy_exercises():
                 if right_angle < 90 and right_stage == "up":
                     right_stage = "down"
                     right_counter += 1
-                    play_audio_feedback(left_counter, "right")
+                    # play_audio_feedback(left_counter, "right")
 
                 # Repetition counting logic for left side
                 if left_angle > 160:
@@ -247,7 +246,7 @@ def physiotherapy_exercises():
                 if left_angle < 90 and left_stage == "up":
                     left_stage = "down"
                     left_counter += 1
-                    play_audio_feedback(left_counter, "left")
+                    # play_audio_feedback(left_counter, "left")
                 # Display analysis with bold font for key information
                 analysis_frame.markdown(
                     f"""
