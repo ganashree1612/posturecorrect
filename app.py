@@ -67,29 +67,6 @@ def calculate_angle(a, b, c):
     return angle
 
 
-# engine = pyttsx3.init()
-
-
-# def play_audio_feedback(count, side):
-#     def run_feedback():
-#         # Generate the speech output for repetition count
-#         message = f"Repetition count for {side} side: {count} repetitions."
-#         # engine.say(message)
-#         # engine.runAndWait()
-
-#     # Run the audio feedback in a separate thread to avoid blocking
-#     # threading.Thread(target=run_feedback).start()
-
-
-# def provide_audio_feedback(posture_status):
-#     def run_feedback():
-#         # Generate the speech output for posture status
-        # engine.say(posture_status)
-        # engine.runAndWait()
-
-    # Run the audio feedback in a separate thread to avoid blocking
-    # threading.Thread(target=run_feedback).start()
-
 
 def physiotherapy_exercises():
     st.title("🧑‍⚕️ Physiotherapy Exercise Tracker")
