@@ -8,8 +8,6 @@ import threading
 
 mp_pose = mp.solutions.pose
 mp_drawing = mp.solutions.drawing_utils
-
-# Streamlit page setup
 st.set_page_config(page_title="PhysioTherapy Assistant", page_icon="🧑‍⚕️", layout="wide")
 
 # Add custom CSS for improved UI
