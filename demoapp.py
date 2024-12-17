@@ -1,126 +1,149 @@
-import streamlit as st
 import cv2
 import mediapipe as mp
-import numpy as np
 import time
+import numpy as np
+import streamlit as st
 
-# Initialize MediaPipe Face Mesh
-mp_face_mesh = mp.solutions.face_mesh
+# Initialize MediaPipe Hand Solutions
+mp_hands = mp.solutions.hands
 mp_drawing = mp.solutions.drawing_utils
 
-
-# Helper function to calculate Euclidean distance
-def calculate_distance(p1, p2):
-    return np.linalg.norm(np.array(p1) - np.array(p2))
-
-
-# Function to validate exercises
-def validate_exercise(landmarks, img_shape, exercise_type):
-    """
-    Validate different face exercises based on MediaPipe landmarks.
-    """
-    feedback = "Perform the exercise correctly."
-    status = "incorrect"
-
-    # Get image width and height for scaling
-    img_width, img_height = img_shape[1], img_shape[0]
-
-    # Extract relevant landmarks
-    left_mouth_corner = (landmarks[61].x * img_width, landmarks[61].y * img_height)
-    right_mouth_corner = (landmarks[291].x * img_width, landmarks[291].y * img_height)
-    upper_lip = (landmarks[13].x * img_width, landmarks[13].y * img_height)
-    lower_lip = (landmarks[14].x * img_width, landmarks[14].y * img_height)
-    chin = (landmarks[152].x * img_width, landmarks[152].y * img_height)
-    eyebrow_left_upper = (landmarks[70].x * img_width, landmarks[70].y * img_height)
-    eyebrow_left_lower = (landmarks[107].x * img_width, landmarks[107].y * img_height)
-
-    # Exercise-specific validation
-    if exercise_type == "Jawline":
-        jaw_distance = calculate_distance(upper_lip, lower_lip)
-        if jaw_distance > 0.05 * img_height:
-            status = "correct"
-            feedback = "Great! Keep your jaw open."
-
-    elif exercise_type == "Eyebrow Lift":
-        eyebrow_distance = calculate_distance(eyebrow_left_upper, eyebrow_left_lower)
-        if eyebrow_distance > 0.02 * img_height:
-            status = "correct"
-            feedback = "Eyebrows lifted! Hold the position."
-
-    elif exercise_type == "Cheek Lift":
-        mouth_distance = calculate_distance(left_mouth_corner, right_mouth_corner)
-        if mouth_distance > 0.2 * img_width:
-            status = "correct"
-            feedback = "Good smile! Cheeks lifted."
-
-    elif exercise_type == "Mouth Stretch":
-        horizontal_mouth = calculate_distance(left_mouth_corner, right_mouth_corner)
-        vertical_mouth = calculate_distance(upper_lip, lower_lip)
-        if horizontal_mouth > 0.15 * img_width and vertical_mouth > 0.1 * img_height:
-            status = "correct"
-            feedback = "Mouth stretched wide. Hold it!"
-
-    return status, feedback
+# Feedback messages
+EXERCISES = {
+    "FIST": "Make a tight fist.",
+    "STRETCH": "Stretch your fingers wide.",
+    "FLEX": "Bend only your fingers (not the palm).",
+}
 
 
-# Streamlit App
+# Function to calculate Euclidean distance
+def distance(point1, point2):
+    return np.sqrt((point1.x - point2.x) ** 2 + (point1.y - point2.y) ** 2)
+
+
+# Function to analyze and validate hand exercises
+def analyze_hand_landmarks(landmarks, exercise_type):
+    if exercise_type == "FIST":
+        # Fist exercise: All fingertips close to their respective bases
+        distances = [
+            distance(landmarks[4], landmarks[0]),  # Thumb
+            distance(landmarks[8], landmarks[0]),  # Index
+            distance(landmarks[12], landmarks[0]),  # Middle
+            distance(landmarks[16], landmarks[0]),  # Ring
+            distance(landmarks[20], landmarks[0]),  # Pinky
+        ]
+        return all(d < 0.1 for d in distances)
+    elif exercise_type == "STRETCH":
+        # Stretch exercise: Fingertips far from the palm center
+        distances = [
+            distance(landmarks[8], landmarks[0]),
+            distance(landmarks[12], landmarks[0]),
+            distance(landmarks[16], landmarks[0]),
+            distance(landmarks[20], landmarks[0]),
+        ]
+        return all(d > 0.2 for d in distances)
+    elif exercise_type == "FLEX":
+        # Flex exercise: Finger tips bending while keeping base stable
+        return landmarks[8].y > landmarks[6].y and landmarks[12].y > landmarks[10].y
+    else:
+        return False
+
+
+# Streamlit Frontend
 def main():
-    st.title("Facial Exercise Correction")
-    st.write("Perform different facial exercises, and get real-time feedback.")
+    st.title("Hand Exercise Correction for Arthritis")
+    st.markdown("Real-time analysis of hand exercises using MediaPipe and OpenCV.")
 
-    # Select exercise
+    # Streamlit UI Elements
     exercise_type = st.sidebar.selectbox(
-        "Choose Exercise", ["Jawline", "Eyebrow Lift", "Cheek Lift", "Mouth Stretch"]
+        "Choose Exercise",
+        ["FIST", "STRETCH", "FLEX"],
     )
+    st.sidebar.write(EXERCISES[exercise_type])
 
-    stframe = st.empty()
-    feedback_text = st.empty()
-    timer_text = st.empty()
+    run = st.button("Start Exercise")
+    stop = st.button("Stop Exercise")
 
-    cap = cv2.VideoCapture(0)
+    # Video Capture and Timer
+    if run:
+        cap = cv2.VideoCapture(0)
+        stframe = st.empty()
 
-    with mp_face_mesh.FaceMesh(
-        static_image_mode=False, max_num_faces=1, refine_landmarks=True
-    ) as face_mesh:
-        correct_start_time = None
-        correct_duration = 0
+        # Initialize Timer
+        start_time = 0
+        correct_time = 0
+        is_correct = False
 
-        while cap.isOpened():
-            ret, frame = cap.read()
-            if not ret:
-                st.error("Webcam not found.")
-                break
+        with mp_hands.Hands(
+            static_image_mode=False,
+            max_num_hands=1,
+            min_detection_confidence=0.5,
+            min_tracking_confidence=0.5,
+        ) as hands:
 
-            # Flip and process the frame
-            frame = cv2.flip(frame, 1)
-            rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-            results = face_mesh.process(rgb_frame)
+            while cap.isOpened():
+                success, image = cap.read()
+                if not success:
+                    st.write("Ignoring empty camera frame.")
+                    continue
 
-            if results.multi_face_landmarks:
-                for landmarks in results.multi_face_landmarks:
-                    status, feedback = validate_exercise(
-                        landmarks.landmark, frame.shape, exercise_type
-                    )
+                # Process the image
+                image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+                image.flags.writeable = False
+                results = hands.process(image)
 
-                    if status == "correct":
-                        if correct_start_time is None:
-                            correct_start_time = time.time()
-                        correct_duration = int(time.time() - correct_start_time)
-                    else:
-                        correct_start_time = None
-                        correct_duration = 0
+                image.flags.writeable = True
+                image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
 
-                    mp_drawing.draw_landmarks(
-                        frame, landmarks, mp_face_mesh.FACEMESH_TESSELATION
-                    )
+                # Analyze landmarks
+                if results.multi_hand_landmarks:
+                    for hand_landmarks in results.multi_hand_landmarks:
+                        mp_drawing.draw_landmarks(
+                            image,
+                            hand_landmarks,
+                            mp_hands.HAND_CONNECTIONS,
+                            mp_drawing.DrawingSpec(color=(0, 255, 0), thickness=2),
+                            mp_drawing.DrawingSpec(color=(255, 0, 0), thickness=2),
+                        )
 
-            feedback_text.write(f"**Feedback:** {feedback}")
-            timer_text.write(f"**Time Held:** {correct_duration} seconds")
+                        # Check exercise
+                        correct = analyze_hand_landmarks(
+                            hand_landmarks.landmark, exercise_type
+                        )
 
-            frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-            stframe.image(frame, channels="RGB", use_column_width=True)
+                        if correct:
+                            if not is_correct:
+                                start_time = time.time()
+                                is_correct = True
+                            correct_time = time.time() - start_time
+                            feedback = f"Correct! Hold time: {int(correct_time)}s"
+                            color = (0, 255, 0)
+                        else:
+                            is_correct = False
+                            feedback = "Incorrect. Adjust your hand position."
+                            color = (0, 0, 255)
+                            correct_time = 0
+
+                        # Display Feedback
+                        cv2.putText(
+                            image,
+                            feedback,
+                            (10, 30),
+                            cv2.FONT_HERSHEY_SIMPLEX,
+                            1,
+                            color,
+                            2,
+                            cv2.LINE_AA,
+                        )
+
+                # Display the image in Streamlit
+                stframe.image(image, channels="BGR", use_column_width=True)
+
+                if stop:
+                    break
 
         cap.release()
+        cv2.destroyAllWindows()
 
 
 if __name__ == "__main__":

@@ -47,7 +47,7 @@ def streamlit_menu():
                 "Select Exercise",
                 "Physio Exercises",
                 "Posture Correction",
-                "face exercises",
+                "hand exercises",
             ],
             icons=["activity", "person-rolodex", "list-task"],
             menu_icon="cast",
@@ -158,6 +158,72 @@ def physiotherapy_exercises():
                     if left_angle < 90:
                         analysis_frame.markdown(
                             "<h4 style='color:red;'>⚠️ Left hand not raised properly!</h4>",
+                            unsafe_allow_html=True,
+                        )
+
+                elif exercise == "Arm Curl":
+                    # Right side
+                    right_wrist = [
+                        landmarks[mp_pose.PoseLandmark.RIGHT_WRIST.value].x,
+                        landmarks[mp_pose.PoseLandmark.RIGHT_WRIST.value].y,
+                    ]
+                    right_elbow = [
+                        landmarks[mp_pose.PoseLandmark.RIGHT_ELBOW.value].x,
+                        landmarks[mp_pose.PoseLandmark.RIGHT_ELBOW.value].y,
+                    ]
+                    right_shoulder = [
+                        landmarks[mp_pose.PoseLandmark.RIGHT_SHOULDER.value].x,
+                        landmarks[mp_pose.PoseLandmark.RIGHT_SHOULDER.value].y,
+                    ]
+                    right_angle = calculate_angle(
+                        right_wrist, right_elbow, right_shoulder
+                    )
+
+                    # Left side
+                    left_wrist = [
+                        landmarks[mp_pose.PoseLandmark.LEFT_WRIST.value].x,
+                        landmarks[mp_pose.PoseLandmark.LEFT_WRIST.value].y,
+                    ]
+                    left_elbow = [
+                        landmarks[mp_pose.PoseLandmark.LEFT_ELBOW.value].x,
+                        landmarks[mp_pose.PoseLandmark.LEFT_ELBOW.value].y,
+                    ]
+                    left_shoulder = [
+                        landmarks[mp_pose.PoseLandmark.LEFT_SHOULDER.value].x,
+                        landmarks[mp_pose.PoseLandmark.LEFT_SHOULDER.value].y,
+                    ]
+                    left_angle = calculate_angle(left_wrist, left_elbow, left_shoulder)
+
+                    # Feedback for Arm Curl: Ensure elbow angle decreases sufficiently
+                    if right_angle > 150:
+                        analysis_frame.markdown(
+                            "<h4 style='color:orange;'>⚠️ Right arm fully extended.</h4>",
+                            unsafe_allow_html=True,
+                        )
+                    elif right_angle < 45:
+                        analysis_frame.markdown(
+                            "<h4 style='color:green;'>✅ Right arm curled correctly!</h4>",
+                            unsafe_allow_html=True,
+                        )
+                    else:
+                        analysis_frame.markdown(
+                            "<h4 style='color:red;'>⚠️ Incomplete right arm curl.</h4>",
+                            unsafe_allow_html=True,
+                        )
+
+                    if left_angle > 150:
+                        analysis_frame.markdown(
+                            "<h4 style='color:orange;'>⚠️ Left arm fully extended.</h4>",
+                            unsafe_allow_html=True,
+                        )
+                    elif left_angle < 45:
+                        analysis_frame.markdown(
+                            "<h4 style='color:green;'>✅ Left arm curled correctly!</h4>",
+                            unsafe_allow_html=True,
+                        )
+                    else:
+                        analysis_frame.markdown(
+                            "<h4 style='color:red;'>⚠️ Incomplete left arm curl.</h4>",
                             unsafe_allow_html=True,
                         )
 
@@ -498,7 +564,7 @@ def main():
         physiotherapy_exercises()
     elif selected == "Posture Correction":
         start_posture_analysis()
-    elif selected == "face exercises":
+    elif selected == "hand exercises":
         demoapp.main()
 
 
