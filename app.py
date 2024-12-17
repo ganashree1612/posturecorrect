@@ -4,6 +4,8 @@ import cv2
 import mediapipe as mp
 from streamlit_option_menu import option_menu
 import threading
+from streamlit_webrtc import webrtc_streamer
+import demoapp
 
 mp_pose = mp.solutions.pose
 mp_drawing = mp.solutions.drawing_utils
@@ -45,7 +47,7 @@ def streamlit_menu():
                 "Select Exercise",
                 "Physio Exercises",
                 "Posture Correction",
-                "Personalized Exercise Plan",
+                "face exercises",
             ],
             icons=["activity", "person-rolodex", "list-task"],
             menu_icon="cast",
@@ -67,9 +69,9 @@ def calculate_angle(a, b, c):
     return angle
 
 
-
 def physiotherapy_exercises():
     st.title("🧑‍⚕️ Physiotherapy Exercise Tracker")
+
     exercise = st.selectbox(
         "Choose an exercise", ["Shoulder Raise", "Leg Raise", "Arm Curl"]
     )
@@ -105,6 +107,7 @@ def physiotherapy_exercises():
                 st.write("Failed to capture video")
                 break
 
+            # Convert frame to RGB for MediaPipe
             image = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
             result = pose.process(image)
             image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
@@ -112,6 +115,7 @@ def physiotherapy_exercises():
             try:
                 landmarks = result.pose_landmarks.landmark
 
+                # Exercise logic
                 if exercise == "Shoulder Raise":
                     # Right side
                     right_elbow = [
@@ -145,6 +149,18 @@ def physiotherapy_exercises():
                     ]
                     left_angle = calculate_angle(left_elbow, left_shoulder, left_hip)
 
+                    # Warning for improper hand raise
+                    if right_angle < 90:
+                        analysis_frame.markdown(
+                            "<h4 style='color:red;'>⚠️ Right hand not raised properly!</h4>",
+                            unsafe_allow_html=True,
+                        )
+                    if left_angle < 90:
+                        analysis_frame.markdown(
+                            "<h4 style='color:red;'>⚠️ Left hand not raised properly!</h4>",
+                            unsafe_allow_html=True,
+                        )
+
                 elif exercise == "Leg Raise":
                     # Right side
                     right_hip = [
@@ -176,46 +192,12 @@ def physiotherapy_exercises():
                     ]
                     left_angle = calculate_angle(left_hip, left_knee, left_ankle)
 
-                elif exercise == "Arm Curl":
-                    # Right side
-                    right_shoulder = [
-                        landmarks[mp_pose.PoseLandmark.RIGHT_SHOULDER.value].x,
-                        landmarks[mp_pose.PoseLandmark.RIGHT_SHOULDER.value].y,
-                    ]
-                    right_elbow = [
-                        landmarks[mp_pose.PoseLandmark.RIGHT_ELBOW.value].x,
-                        landmarks[mp_pose.PoseLandmark.RIGHT_ELBOW.value].y,
-                    ]
-                    right_wrist = [
-                        landmarks[mp_pose.PoseLandmark.RIGHT_WRIST.value].x,
-                        landmarks[mp_pose.PoseLandmark.RIGHT_WRIST.value].y,
-                    ]
-                    right_angle = calculate_angle(
-                        right_shoulder, right_elbow, right_wrist
-                    )
-
-                    # Left side
-                    left_shoulder = [
-                        landmarks[mp_pose.PoseLandmark.LEFT_SHOULDER.value].x,
-                        landmarks[mp_pose.PoseLandmark.LEFT_SHOULDER.value].y,
-                    ]
-                    left_elbow = [
-                        landmarks[mp_pose.PoseLandmark.LEFT_ELBOW.value].x,
-                        landmarks[mp_pose.PoseLandmark.LEFT_ELBOW.value].y,
-                    ]
-                    left_wrist = [
-                        landmarks[mp_pose.PoseLandmark.LEFT_WRIST.value].x,
-                        landmarks[mp_pose.PoseLandmark.LEFT_WRIST.value].y,
-                    ]
-                    left_angle = calculate_angle(left_shoulder, left_elbow, left_wrist)
-
                 # Repetition counting logic for right side
                 if right_angle > 160:
                     right_stage = "up"
                 if right_angle < 90 and right_stage == "up":
                     right_stage = "down"
                     right_counter += 1
-                    # play_audio_feedback(left_counter, "right")
 
                 # Repetition counting logic for left side
                 if left_angle > 160:
@@ -223,12 +205,12 @@ def physiotherapy_exercises():
                 if left_angle < 90 and left_stage == "up":
                     left_stage = "down"
                     left_counter += 1
-                    # play_audio_feedback(left_counter, "left")
-                # Display analysis with bold font for key information
+
+                # Display analysis
                 analysis_frame.markdown(
                     f"""
-                    <div class='analysis-box'>
-                    <h3 class='big-font'>{exercise} Analysis</h3>
+                    <div>
+                    <h3>{exercise} Analysis</h3>
                     <p><strong>Right Angle:</strong> {right_angle:.2f}</p>
                     <p><strong>Left Angle:</strong> {left_angle:.2f}</p>
                     <p><strong>Right Stage:</strong> {right_stage}</p>
@@ -243,12 +225,14 @@ def physiotherapy_exercises():
             except Exception as e:
                 st.write("Error in exercise analysis:", e)
 
+            # Draw landmarks and pose connections
             mp_drawing.draw_landmarks(
                 image, result.pose_landmarks, mp_pose.POSE_CONNECTIONS
             )
             stframe.image(image, channels="BGR")
 
     cap.release()
+    # cv2.destroyAllWindows()
 
 
 def personalized_exercise_plan():
@@ -306,7 +290,8 @@ def posture_correction():
     stframe = st.empty()
     analysis_frame = st.empty()  # Placeholder for posture feedback
 
-    cap = cv2.VideoCapture(2)
+    cap = cv2.VideoCapture(0)
+    print(cv2.VideoCapture(0).getBackendName())  # Get the backend used (DirectShow, etc.)
 
     with mp_pose.Pose(
         min_detection_confidence=0.5, min_tracking_confidence=0.5
@@ -513,8 +498,8 @@ def main():
         physiotherapy_exercises()
     elif selected == "Posture Correction":
         start_posture_analysis()
-    elif selected == "Personalized Exercise Plan":
-        personalized_exercise_plan()
+    elif selected == "face exercises":
+        demoapp.main()
 
 
 if __name__ == "__main__":
