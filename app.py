@@ -76,55 +76,56 @@ def physiotherapy_exercises():
         "Choose an exercise", ["Shoulder Raise", "Leg Raise", "Arm Curl"]
     )
 
+    # Start/Stop Toggle
     if "run" not in st.session_state:
         st.session_state["run"] = False
 
     col1, col2, col3 = st.columns([1, 2, 1])
     with col2:
-        if st.button(f"Start {exercise}"):
-            st.session_state["run"] = True
-    with col3:
-        if st.button(f"Stop {exercise}"):
-            st.session_state["run"] = False
+        if st.button(f"{'Stop' if st.session_state['run'] else 'Start'} {exercise}"):
+            st.session_state["run"] = not st.session_state["run"]
 
-    stframe = st.empty()
+    stframe = st.empty()  # Placeholder for video feed
     analysis_frame = st.empty()  # Placeholder for exercise analysis output
 
+    # Open Webcam
     cap = cv2.VideoCapture(0)
-    right_counter = 0
-    left_counter = 0
-    right_stage = None
-    left_stage = None
+    right_counter, left_counter = 0, 0
+    right_stage, left_stage = None, None
 
     with mp_pose.Pose(
         min_detection_confidence=0.5, min_tracking_confidence=0.5
     ) as pose:
         while cap.isOpened():
             if not st.session_state["run"]:
-                break
-            ret, frame = cap.read()
-            if not ret:
-                st.write("Failed to capture video")
+                st.write("Exercise tracking stopped.")
                 break
 
-            # Convert frame to RGB for MediaPipe
+            ret, frame = cap.read()
+            if not ret:
+                st.error("Failed to capture video")
+                break
+
+            # Convert BGR to RGB for MediaPipe processing
             image = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            image.flags.writeable = False
             result = pose.process(image)
+            image.flags.writeable = True
             image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
 
             try:
                 landmarks = result.pose_landmarks.landmark
 
-                # Exercise logic
+                # Shoulder Raise
                 if exercise == "Shoulder Raise":
-                    # Right side
-                    right_elbow = [
-                        landmarks[mp_pose.PoseLandmark.RIGHT_ELBOW.value].x,
-                        landmarks[mp_pose.PoseLandmark.RIGHT_ELBOW.value].y,
-                    ]
+                    # Right arm
                     right_shoulder = [
                         landmarks[mp_pose.PoseLandmark.RIGHT_SHOULDER.value].x,
                         landmarks[mp_pose.PoseLandmark.RIGHT_SHOULDER.value].y,
+                    ]
+                    right_elbow = [
+                        landmarks[mp_pose.PoseLandmark.RIGHT_ELBOW.value].x,
+                        landmarks[mp_pose.PoseLandmark.RIGHT_ELBOW.value].y,
                     ]
                     right_hip = [
                         landmarks[mp_pose.PoseLandmark.RIGHT_HIP.value].x,
@@ -134,14 +135,14 @@ def physiotherapy_exercises():
                         right_elbow, right_shoulder, right_hip
                     )
 
-                    # Left side
-                    left_elbow = [
-                        landmarks[mp_pose.PoseLandmark.LEFT_ELBOW.value].x,
-                        landmarks[mp_pose.PoseLandmark.LEFT_ELBOW.value].y,
-                    ]
+                    # Left arm
                     left_shoulder = [
                         landmarks[mp_pose.PoseLandmark.LEFT_SHOULDER.value].x,
                         landmarks[mp_pose.PoseLandmark.LEFT_SHOULDER.value].y,
+                    ]
+                    left_elbow = [
+                        landmarks[mp_pose.PoseLandmark.LEFT_ELBOW.value].x,
+                        landmarks[mp_pose.PoseLandmark.LEFT_ELBOW.value].y,
                     ]
                     left_hip = [
                         landmarks[mp_pose.PoseLandmark.LEFT_HIP.value].x,
@@ -149,20 +150,52 @@ def physiotherapy_exercises():
                     ]
                     left_angle = calculate_angle(left_elbow, left_shoulder, left_hip)
 
-                    # Warning for improper hand raise
+                    # Feedback
                     if right_angle < 90:
-                        analysis_frame.markdown(
-                            "<h4 style='color:red;'>⚠️ Right hand not raised properly!</h4>",
-                            unsafe_allow_html=True,
+                        cv2.putText(
+                            image,
+                            "Raise Right Hand!",
+                            (50, 50),
+                            cv2.FONT_HERSHEY_SIMPLEX,
+                            1,
+                            (0, 0, 255),
+                            2,
                         )
-                    if left_angle < 90:
-                        analysis_frame.markdown(
-                            "<h4 style='color:red;'>⚠️ Left hand not raised properly!</h4>",
-                            unsafe_allow_html=True,
+                    else:
+                        cv2.putText(
+                            image,
+                            "Right Hand OK",
+                            (50, 50),
+                            cv2.FONT_HERSHEY_SIMPLEX,
+                            1,
+                            (0, 255, 0),
+                            2,
                         )
 
+                    if left_angle < 90:
+                        cv2.putText(
+                            image,
+                            "Raise Left Hand!",
+                            (50, 100),
+                            cv2.FONT_HERSHEY_SIMPLEX,
+                            1,
+                            (0, 0, 255),
+                            2,
+                        )
+                    else:
+                        cv2.putText(
+                            image,
+                            "Left Hand OK",
+                            (50, 100),
+                            cv2.FONT_HERSHEY_SIMPLEX,
+                            1,
+                            (0, 255, 0),
+                            2,
+                        )
+
+                # Arm Curl
                 elif exercise == "Arm Curl":
-                    # Right side
+                    # Right arm
                     right_wrist = [
                         landmarks[mp_pose.PoseLandmark.RIGHT_WRIST.value].x,
                         landmarks[mp_pose.PoseLandmark.RIGHT_WRIST.value].y,
@@ -179,7 +212,7 @@ def physiotherapy_exercises():
                         right_wrist, right_elbow, right_shoulder
                     )
 
-                    # Left side
+                    # Left arm
                     left_wrist = [
                         landmarks[mp_pose.PoseLandmark.LEFT_WRIST.value].x,
                         landmarks[mp_pose.PoseLandmark.LEFT_WRIST.value].y,
@@ -194,41 +227,52 @@ def physiotherapy_exercises():
                     ]
                     left_angle = calculate_angle(left_wrist, left_elbow, left_shoulder)
 
-                    # Feedback for Arm Curl: Ensure elbow angle decreases sufficiently
-                    if right_angle > 150:
-                        analysis_frame.markdown(
-                            "<h4 style='color:orange;'>⚠️ Right arm fully extended.</h4>",
-                            unsafe_allow_html=True,
-                        )
-                    elif right_angle < 45:
-                        analysis_frame.markdown(
-                            "<h4 style='color:green;'>✅ Right arm curled correctly!</h4>",
-                            unsafe_allow_html=True,
-                        )
-                    else:
-                        analysis_frame.markdown(
-                            "<h4 style='color:red;'>⚠️ Incomplete right arm curl.</h4>",
-                            unsafe_allow_html=True,
-                        )
-
-                    if left_angle > 150:
-                        analysis_frame.markdown(
-                            "<h4 style='color:orange;'>⚠️ Left arm fully extended.</h4>",
-                            unsafe_allow_html=True,
-                        )
-                    elif left_angle < 45:
-                        analysis_frame.markdown(
-                            "<h4 style='color:green;'>✅ Left arm curled correctly!</h4>",
-                            unsafe_allow_html=True,
+                    # Feedback
+                    if right_angle < 45:
+                        cv2.putText(
+                            image,
+                            "Right Curl OK",
+                            (50, 50),
+                            cv2.FONT_HERSHEY_SIMPLEX,
+                            1,
+                            (0, 255, 0),
+                            2,
                         )
                     else:
-                        analysis_frame.markdown(
-                            "<h4 style='color:red;'>⚠️ Incomplete left arm curl.</h4>",
-                            unsafe_allow_html=True,
+                        cv2.putText(
+                            image,
+                            "Curl Right Arm!",
+                            (50, 50),
+                            cv2.FONT_HERSHEY_SIMPLEX,
+                            1,
+                            (0, 0, 255),
+                            2,
                         )
 
+                    if left_angle < 45:
+                        cv2.putText(
+                            image,
+                            "Left Curl OK",
+                            (50, 100),
+                            cv2.FONT_HERSHEY_SIMPLEX,
+                            1,
+                            (0, 255, 0),
+                            2,
+                        )
+                    else:
+                        cv2.putText(
+                            image,
+                            "Curl Left Arm!",
+                            (50, 100),
+                            cv2.FONT_HERSHEY_SIMPLEX,
+                            1,
+                            (0, 0, 255),
+                            2,
+                        )
+
+                # Leg Raise
                 elif exercise == "Leg Raise":
-                    # Right side
+                    # Right leg
                     right_hip = [
                         landmarks[mp_pose.PoseLandmark.RIGHT_HIP.value].x,
                         landmarks[mp_pose.PoseLandmark.RIGHT_HIP.value].y,
@@ -243,7 +287,7 @@ def physiotherapy_exercises():
                     ]
                     right_angle = calculate_angle(right_hip, right_knee, right_ankle)
 
-                    # Left side
+                    # Left leg
                     left_hip = [
                         landmarks[mp_pose.PoseLandmark.LEFT_HIP.value].x,
                         landmarks[mp_pose.PoseLandmark.LEFT_HIP.value].y,
@@ -258,46 +302,57 @@ def physiotherapy_exercises():
                     ]
                     left_angle = calculate_angle(left_hip, left_knee, left_ankle)
 
-                # Repetition counting logic for right side
-                if right_angle > 160:
-                    right_stage = "up"
-                if right_angle < 90 and right_stage == "up":
-                    right_stage = "down"
-                    right_counter += 1
+                    # Feedback
+                    if right_angle < 90:
+                        cv2.putText(
+                            image,
+                            "Raise Right Leg!",
+                            (50, 50),
+                            cv2.FONT_HERSHEY_SIMPLEX,
+                            1,
+                            (0, 0, 255),
+                            2,
+                        )
+                    else:
+                        cv2.putText(
+                            image,
+                            "Right Leg OK",
+                            (50, 50),
+                            cv2.FONT_HERSHEY_SIMPLEX,
+                            1,
+                            (0, 255, 0),
+                            2,
+                        )
 
-                # Repetition counting logic for left side
-                if left_angle > 160:
-                    left_stage = "up"
-                if left_angle < 90 and left_stage == "up":
-                    left_stage = "down"
-                    left_counter += 1
+                    if left_angle < 90:
+                        cv2.putText(
+                            image,
+                            "Raise Left Leg!",
+                            (50, 100),
+                            cv2.FONT_HERSHEY_SIMPLEX,
+                            1,
+                            (0, 0, 255),
+                            2,
+                        )
+                    else:
+                        cv2.putText(
+                            image,
+                            "Left Leg OK",
+                            (50, 100),
+                            cv2.FONT_HERSHEY_SIMPLEX,
+                            1,
+                            (0, 255, 0),
+                            2,
+                        )
 
-                # Display analysis
-                analysis_frame.markdown(
-                    f"""
-                    <div>
-                    <h3>{exercise} Analysis</h3>
-                    <p><strong>Right Angle:</strong> {right_angle:.2f}</p>
-                    <p><strong>Left Angle:</strong> {left_angle:.2f}</p>
-                    <p><strong>Right Stage:</strong> {right_stage}</p>
-                    <p><strong>Left Stage:</strong> {left_stage}</p>
-                    <p><strong>Right Reps:</strong> {right_counter}</p>
-                    <p><strong>Left Reps:</strong> {left_counter}</p>
-                    </div>
-                    """,
-                    unsafe_allow_html=True,
-                )
+                # Display real-time video feed
+                stframe.image(image, channels="BGR")
 
             except Exception as e:
-                st.write("Error in exercise analysis:", e)
-
-            # Draw landmarks and pose connections
-            mp_drawing.draw_landmarks(
-                image, result.pose_landmarks, mp_pose.POSE_CONNECTIONS
-            )
-            stframe.image(image, channels="BGR")
+                st.error(f"Error: {str(e)}")
 
     cap.release()
+
     # cv2.destroyAllWindows()
 
 
